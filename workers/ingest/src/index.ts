@@ -105,6 +105,7 @@ export default {
       store_id: store.store_id,
       platform: store.platform,
       count: batch.value.length,
+      events: batch.value.map((e) => [e.event_type, e.props?.product_id ?? ""]),
       status: 204,
       dur_ms: Date.now() - start,
     });

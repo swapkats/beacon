@@ -122,6 +122,17 @@ const apiKey = env.SHOPIFY_API_KEY;
         border-radius: 2px;
         background: var(--accent);
       }
+      .diag {
+        margin-top: 12px;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 10px 16px;
+        font-size: 13px;
+      }
+      .diag summary { cursor: pointer; color: var(--muted); }
+      .diag table { margin-top: 8px; }
+      .diag td, .diag th { padding: 6px 10px; font-size: 12px; }
     </style>
   </head>
   <body>
@@ -173,6 +184,11 @@ const apiKey = env.SHOPIFY_API_KEY;
       estimates from Cloudflare Analytics Engine (90-day retention); sessionization follows a
       30-minute inactivity window.
     </p>
+
+    <details class="diag" id="diag">
+      <summary>Diagnostics — raw events in the lake (last 24h)</summary>
+      <div id="diag-body" class="status">Loading…</div>
+    </details>
 
     <script>
       const $ = (id) => document.getElementById(id);
@@ -289,6 +305,26 @@ const apiKey = env.SHOPIFY_API_KEY;
         currentDays = Number(btn.dataset.days);
         document.querySelectorAll("#days-toggle button").forEach((b) => b.classList.toggle("active", b === btn));
         load(currentDays);
+      });
+
+      let diagLoaded = false;
+      document.getElementById("diag").addEventListener("toggle", async (e) => {
+        if (!e.target.open || diagLoaded) return;
+        diagLoaded = true;
+        const body = document.getElementById("diag-body");
+        try {
+          const res = await authedFetch("/api/debug/events?hours=24");
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
+          const rows = (data.rows ?? [])
+            .map((r) => `<tr><td>${escapeHtml(r.event_type)}</td><td>${escapeHtml(r.product_id || "(none)")}</td><td class="num">${fmtInt(r.n)}</td></tr>`)
+            .join("");
+          body.innerHTML = rows
+            ? `<table><thead><tr><th>Event</th><th>Product</th><th class="num">Rows in lake</th></tr></thead><tbody>${rows}</tbody></table>`
+            : "No events found in the lake for this store in the last 24h.";
+        } catch (err) {
+          body.textContent = `Diagnostics failed: ${err.message}`;
+        }
       });
 
       load(currentDays);
