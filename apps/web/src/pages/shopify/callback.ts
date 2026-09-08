@@ -1,6 +1,5 @@
 import type { APIRoute } from "astro";
-import { getStoreByShop, getStoreRecord, provisionStore, type ShopifyCred } from "../../core/kv";
-import { randomHex, ulid } from "../../core/ids";
+import { getStoreRecord, type ShopifyCred } from "../../core/kv";
 import { getEnv } from "../../lib/env";
 import {
   exchangeCodeForToken,
@@ -9,6 +8,7 @@ import {
   verifyOauthCallback,
 } from "../../platforms/shopify/oauth";
 import { ensureWebPixel } from "../../platforms/shopify/admin";
+import { provisionShopStore } from "../../platforms/shopify/provision";
 
 function fail(message: string): Response {
   return new Response(`Installation failed: ${message}`, { status: 400 });
@@ -44,46 +44,21 @@ export const GET: APIRoute = async (ctx) => {
   });
   if (!token) return fail("token exchange failed");
 
-  const existingIndex = await getStoreByShop(env, shop);
-  let storeId: string;
-  let ingestToken: string;
-  let salt: string;
-  if (existingIndex) {
-    storeId = existingIndex.store_id;
-    ingestToken = existingIndex.ingest_token;
-    salt = (await getStoreRecord(env, storeId))?.salt ?? randomHex(32);
-  } else {
-    storeId = ulid();
-    ingestToken = randomHex(24);
-    salt = randomHex(32);
-  }
-
-  const cred: ShopifyCred = {
+  const provisioned = await provisionShopStore(env, shop, {
     access_token: token.access_token,
     scope: token.scope,
     updated_at: new Date().toISOString(),
-  };
-  await provisionStore(env, {
-    record: {
-      store_id: storeId,
-      platform: "shopify",
-      external_id: shop,
-      salt,
-      created_at: new Date().toISOString(),
-    },
-    ingestToken,
-    cred,
-  });
+  } satisfies ShopifyCred);
 
   const pixel = await ensureWebPixel(shop, token.access_token, {
     ingestUrl: env.PUBLIC_INGEST_URL,
-    storeToken: ingestToken,
+    storeToken: provisioned.ingest_token,
   });
   if (!pixel.ok) {
-    log({ evt: "install.pixel_failed", shop, store_id: storeId, detail: pixel.detail });
+    log({ evt: "install.pixel_failed", shop, store_id: provisioned.store_id, detail: pixel.detail });
     return fail(`web pixel setup failed: ${pixel.detail}`);
   }
 
-  log({ evt: "install.complete", shop, store_id: storeId, pixel: pixel.detail });
+  log({ evt: "install.complete", shop, store_id: provisioned.store_id, pixel: pixel.detail });
   return ctx.redirect(`https://${shop}/admin/apps/${env.SHOPIFY_APP_HANDLE}`, 302);
 };

@@ -155,6 +155,29 @@ export async function exchangeCodeForToken(
   return { access_token: body.access_token, scope: body.scope };
 }
 
+export async function exchangeIdTokenForOfflineToken(
+  shop: string,
+  idToken: string,
+  opts: { apiKey: string; apiSecret: string }
+): Promise<OAuthTokenResponse | null> {
+  const res = await fetch(`https://${shop}/admin/oauth/access_token`, {
+    method: "POST",
+    headers: { "content-type": "application/json", accept: "application/json" },
+    body: JSON.stringify({
+      grant_type: "urn:ietf:params:oauth:grant-type:token-exchange",
+      client_id: opts.apiKey,
+      client_secret: opts.apiSecret,
+      subject_token: idToken,
+      subject_token_type: "urn:shopify:params:oauth:token-type:id_token",
+      requested_token_type: "urn:shopify:params:oauth:token-type:offline-access-token",
+    }),
+  });
+  if (!res.ok) return null;
+  const body = (await res.json()) as { access_token?: string; scope?: string };
+  if (!body.access_token) return null;
+  return { access_token: body.access_token, scope: body.scope };
+}
+
 export async function verifyWebhookHmac(
   rawBody: string,
   apiSecret: string,

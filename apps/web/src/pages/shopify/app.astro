@@ -223,9 +223,27 @@ const apiKey = env.SHOPIFY_API_KEY;
         return res;
       }
 
+      let bootstrapped = false;
+      async function bootstrap() {
+        if (bootstrapped) return;
+        const shopify = window.shopify;
+        if (!shopify || typeof shopify.idToken !== "function") return;
+        const token = await shopify.idToken();
+        const res = await fetch("/api/bootstrap", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.detail ?? body.error ?? `bootstrap failed (HTTP ${res.status})`);
+        }
+        bootstrapped = true;
+      }
+
       async function load(days) {
         $("rows").innerHTML = '<tr><td colspan="6" class="status">Loading…</td></tr>';
         try {
+          await bootstrap();
           const res = await authedFetch(`/api/stats?days=${days}`);
           if (!res.ok) {
             const body = await res.json().catch(() => ({}));
