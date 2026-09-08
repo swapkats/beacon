@@ -174,7 +174,7 @@ export async function exchangeIdTokenForOfflineToken(
         client_id: opts.apiKey,
         client_secret: opts.apiSecret,
         subject_token: idToken,
-        subject_token_type: "urn:shopify:params:oauth:token-type:id_token",
+        subject_token_type: "urn:ietf:params:oauth:token-type:id_token",
         requested_token_type: "urn:shopify:params:oauth:token-type:offline-access-token",
       }),
     });
