@@ -14,9 +14,10 @@
     }
   ],
   "vars": {
-    "SHOPIFY_API_KEY": "REPLACE_WITH_CLIENT_ID",
+    "SHOPIFY_API_KEY": "2f1de39dca0e8d0b04ae7d67607d836a",
     "SHOPIFY_APP_HANDLE": "beacon",
-    "PUBLIC_INGEST_URL": "https://beacon-ingest.REPLACE_WITH_SUBDOMAIN.workers.dev/v1/events",
-    "AE_DATASET": "beacon_events"
+    "PUBLIC_INGEST_URL": "https://beacon-ingest.swapkats.workers.dev/v1/events",
+    "AE_DATASET": "beacon_events",
+    "CF_ACCOUNT_ID": "71c9f2b6ede1d60abd23e44ca965b9ab"
   }
 }
