@@ -1,5 +1,4 @@
 name = "beacon"
-handle = "beacon"
 client_id = "2f1de39dca0e8d0b04ae7d67607d836a"
 application_url = "https://beacon-web.swapkats.workers.dev"
 embedded = true
@@ -20,6 +19,5 @@ topics = ["app/uninstalled"]
 uri = "/shopify/webhooks"
 
 [[webhooks.subscriptions]]
-topics = ["customers/data_request", "customers/redact", "shop/redact"]
+compliance_topics = ["customers/data_request", "customers/redact", "shop/redact"]
 uri = "/shopify/webhooks"
-compliance_topics = true
