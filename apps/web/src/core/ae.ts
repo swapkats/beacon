@@ -51,16 +51,15 @@ export async function fetchEngagement(
 
   const engagement = await aeQuery(
     env,
-    `SELECT blob2 AS product_id,
-            MAX(blob7) AS title,
+    `SELECT blob2 AS product_id, blob7 AS title,
             SUM(if(blob1 = 'product.viewed', _sample_interval, 0)) AS views,
             SUM(if(blob1 = 'cart.added', _sample_interval, 0)) AS cart_adds,
             SUM(if(blob1 = 'checkout.started', _sample_interval, 0)) AS checkouts
      FROM ${dataset}
      WHERE index1 = '${storeId}' AND timestamp > NOW() - INTERVAL '${days}' DAY AND blob2 != ''
-     GROUP BY blob2
+     GROUP BY blob2, blob7
      ORDER BY views DESC
-     LIMIT 100`
+     LIMIT 500`
   );
 
   const sessionsByLanding = await aeQuery(
@@ -92,24 +91,43 @@ export async function fetchEngagement(
     bounceByProduct.set(lp, { sessions, bounced });
   }
 
-  const products: ProductEngagement[] = engagement.data.map((row) => {
+  const byProduct = new Map<string, ProductEngagement>();
+  for (const row of engagement.data) {
     const productId = String(row.product_id ?? "");
+    if (productId === "") continue;
+    const title = String(row.title ?? "");
     const views = Number(row.views ?? 0);
     const cartAdds = Number(row.cart_adds ?? 0);
     const checkouts = Number(row.checkouts ?? 0);
-    const bounce = bounceByProduct.get(productId);
-    return {
-      product_id: productId,
-      title: String(row.title ?? "") || productId,
-      views,
-      cart_adds: cartAdds,
-      checkouts: checkouts,
-      sessions: bounce?.sessions ?? 0,
-      bounced: bounce?.bounced ?? 0,
-      bounce_rate: bounce && bounce.sessions > 0 ? bounce.bounced / bounce.sessions : null,
-      score: views + 5 * cartAdds + 20 * checkouts,
-    };
-  });
+    const existing = byProduct.get(productId);
+    if (existing) {
+      existing.views += views;
+      existing.cart_adds += cartAdds;
+      existing.checkouts += checkouts;
+      if (existing.title === "" && title !== "") existing.title = title;
+    } else {
+      byProduct.set(productId, {
+        product_id: productId,
+        title,
+        views,
+        cart_adds: cartAdds,
+        checkouts,
+        sessions: 0,
+        bounced: 0,
+        bounce_rate: null,
+        score: 0,
+      });
+    }
+  }
+
+  const products = [...byProduct.values()];
+  for (const p of products) {
+    const bounce = bounceByProduct.get(p.product_id);
+    p.sessions = bounce?.sessions ?? 0;
+    p.bounced = bounce?.bounced ?? 0;
+    p.bounce_rate = bounce && p.sessions > 0 ? p.bounced / p.sessions : null;
+    p.score = p.views + 5 * p.cart_adds + 20 * p.checkouts;
+  }
 
   products.sort((a, b) => b.score - a.score);
   return { products, store };
