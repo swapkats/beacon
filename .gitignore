@@ -9,3 +9,4 @@ dist/
 .DS_Store
 shopify.app.staging.toml
 shopify.app.*.local.toml
+.astro/
