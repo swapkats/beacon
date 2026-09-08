@@ -13,7 +13,7 @@ const apiKey = env.SHOPIFY_API_KEY;
     <meta name="shopify-api-key" content={apiKey} />
     <script is:inline src="https://cdn.shopify.com/shopifycloud/app-bridge.js"></script>
     <title>Beacon</title>
-    <style>
+    <style is:global>
       :root {
         --bg: #f1f1f1;
         --card: #ffffff;
@@ -92,9 +92,10 @@ const apiKey = env.SHOPIFY_API_KEY;
         font-variant-numeric: tabular-nums;
       }
       tr:last-child td { border-bottom: 0; }
-      th.num, td.num { text-align: right; }
-      .title { font-weight: 600; }
-      .pid { color: var(--muted); font-size: 12px; }
+      tbody tr:hover td { background: #fafafa; }
+      th.num, td.num { text-align: right; white-space: nowrap; }
+      .title { font-weight: 600; overflow-wrap: anywhere; }
+      .pid { color: var(--muted); font-size: 12px; margin-top: 2px; word-break: break-all; }
       .badge {
         display: inline-block;
         padding: 2px 8px;
@@ -107,12 +108,19 @@ const apiKey = env.SHOPIFY_API_KEY;
       .b-bad { background: #ffe4e1; color: var(--bad); }
       .status { padding: 40px; text-align: center; color: var(--muted); }
       .footer { margin-top: 14px; color: var(--muted); font-size: 12px; max-width: 720px; }
-      .score-bar {
+      .score-track {
         height: 4px;
         border-radius: 2px;
+        background: var(--border);
+        margin-top: 6px;
+        width: 96px;
+        margin-left: auto;
+        overflow: hidden;
+      }
+      .score-bar {
+        height: 100%;
+        border-radius: 2px;
         background: var(--accent);
-        margin-top: 4px;
-        min-width: 2px;
       }
     </style>
   </head>
@@ -187,14 +195,14 @@ const apiKey = env.SHOPIFY_API_KEY;
         const maxScore = Math.max(1, ...(data.products ?? []).map((p) => p.score));
         const rows = (data.products ?? [])
           .map((p) => {
-            const width = Math.max(2, Math.round((p.score / maxScore) * 120));
+            const pct = Math.max(2, Math.round((p.score / maxScore) * 100));
             return `<tr>
               <td><div class="title">${escapeHtml(p.title)}</div><div class="pid">${escapeHtml(p.product_id)}</div></td>
               <td class="num">${fmtInt(p.views)}</td>
               <td class="num">${fmtInt(p.cart_adds)}</td>
               <td class="num">${fmtInt(p.checkouts)}</td>
               <td class="num">${bounceBadge(p.bounce_rate)}</td>
-              <td class="num">${fmtInt(p.score)}<div class="score-bar" style="width:${width}px"></div></td>
+              <td class="num">${fmtInt(p.score)}<div class="score-track"><div class="score-bar" style="width:${pct}%"></div></div></td>
             </tr>`;
           })
           .join("");
