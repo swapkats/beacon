@@ -58,33 +58,38 @@ export async function ensureWebPixel(
 ): Promise<{ ok: boolean; detail: string }> {
   const settingsJson = JSON.stringify(settings);
 
-  const existing = await shopifyGraphql<{ webPixel: { id: string } | null }>(
-    shop,
-    accessToken,
-    WEB_PIXEL_QUERY
-  );
-  if (existing.errors) {
-    return { ok: false, detail: `webPixel read failed: ${existing.errors.map((e) => e.message).join("; ")}` };
-  }
-
-  if (existing.data?.webPixel?.id) {
-    const updated = await shopifyGraphql(shop, accessToken, WEB_PIXEL_UPDATE_MUTATION, {
-      id: existing.data.webPixel.id,
-      webPixelInput: { settings: settingsJson },
-    });
-    const errs = updated.data ? undefined : updated.errors;
-    if (errs) return { ok: false, detail: `webPixelUpdate failed: ${errs.map((e) => e.message).join("; ")}` };
-    return { ok: true, detail: "web pixel settings updated" };
-  }
-
   const created = await shopifyGraphql<{
     webPixelCreate: { userErrors: Array<{ message: string }> };
   }>(shop, accessToken, WEB_PIXEL_CREATE_MUTATION, {
     webPixelInput: { settings: settingsJson },
   });
   const userErrors = created.data?.webPixelCreate.userErrors ?? [];
-  if (userErrors.length > 0) {
-    return { ok: false, detail: `webPixelCreate userErrors: ${userErrors.map((e) => e.message).join("; ")}` };
+  if (userErrors.length === 0) {
+    return { ok: true, detail: "web pixel created" };
   }
-  return { ok: true, detail: "web pixel created" };
+
+  const read = await shopifyGraphql<{ webPixel: { id: string } | null }>(
+    shop,
+    accessToken,
+    WEB_PIXEL_QUERY
+  );
+  const existingId = read.data?.webPixel?.id;
+  if (existingId) {
+    const updated = await shopifyGraphql(shop, accessToken, WEB_PIXEL_UPDATE_MUTATION, {
+      id: existingId,
+      webPixelInput: { settings: settingsJson },
+    });
+    if (!updated.data) {
+      return {
+        ok: false,
+        detail: `webPixelUpdate failed: ${updated.errors?.map((e) => e.message).join("; ") ?? "unknown"}`,
+      };
+    }
+    return { ok: true, detail: "web pixel settings updated" };
+  }
+
+  const readNote = read.errors?.length
+    ? ` (read: ${read.errors.map((e) => e.message).join("; ")})`
+    : "";
+  return { ok: false, detail: `webPixelCreate userErrors: ${userErrors.map((e) => e.message).join("; ")}${readNote}` };
 }
