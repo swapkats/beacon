@@ -30,18 +30,18 @@ export const POST: APIRoute = async (ctx) => {
     apiKey: env.SHOPIFY_API_KEY,
     apiSecret: env.SHOPIFY_API_SECRET,
   });
-  if (!cred) {
-    log({ evt: "bootstrap.exchange_failed", shop });
-    return jsonError(502, "token_exchange_failed");
+  if (!cred.ok) {
+    log({ evt: "bootstrap.exchange_failed", shop, status: cred.status, detail: cred.detail });
+    return jsonError(502, "token_exchange_failed", `${cred.status}: ${cred.detail}`);
   }
 
   const provisioned = await provisionShopStore(env, shop, {
-    access_token: cred.access_token,
+    access_token: cred.accessToken,
     scope: cred.scope,
     updated_at: new Date().toISOString(),
   });
 
-  const pixel = await ensureWebPixel(shop, cred.access_token, {
+  const pixel = await ensureWebPixel(shop, cred.accessToken, {
     ingestUrl: env.PUBLIC_INGEST_URL,
     storeToken: provisioned.ingest_token,
   });

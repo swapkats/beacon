@@ -155,27 +155,45 @@ export async function exchangeCodeForToken(
   return { access_token: body.access_token, scope: body.scope };
 }
 
+export type TokenExchangeResult =
+  | { ok: true; accessToken: string; scope?: string }
+  | { ok: false; status: number; detail: string };
+
 export async function exchangeIdTokenForOfflineToken(
   shop: string,
   idToken: string,
   opts: { apiKey: string; apiSecret: string }
-): Promise<OAuthTokenResponse | null> {
-  const res = await fetch(`https://${shop}/admin/oauth/access_token`, {
-    method: "POST",
-    headers: { "content-type": "application/json", accept: "application/json" },
-    body: JSON.stringify({
-      grant_type: "urn:ietf:params:oauth:grant-type:token-exchange",
-      client_id: opts.apiKey,
-      client_secret: opts.apiSecret,
-      subject_token: idToken,
-      subject_token_type: "urn:shopify:params:oauth:token-type:id_token",
-      requested_token_type: "urn:shopify:params:oauth:token-type:offline-access-token",
-    }),
-  });
-  if (!res.ok) return null;
-  const body = (await res.json()) as { access_token?: string; scope?: string };
-  if (!body.access_token) return null;
-  return { access_token: body.access_token, scope: body.scope };
+): Promise<TokenExchangeResult> {
+  let res: Response;
+  try {
+    res = await fetch(`https://${shop}/admin/oauth/access_token`, {
+      method: "POST",
+      headers: { "content-type": "application/json", accept: "application/json" },
+      body: JSON.stringify({
+        grant_type: "urn:ietf:params:oauth:grant-type:token-exchange",
+        client_id: opts.apiKey,
+        client_secret: opts.apiSecret,
+        subject_token: idToken,
+        subject_token_type: "urn:shopify:params:oauth:token-type:id_token",
+        requested_token_type: "urn:shopify:params:oauth:token-type:offline-access-token",
+      }),
+    });
+  } catch (e) {
+    return { ok: false, status: 0, detail: `network error: ${e instanceof Error ? e.message : String(e)}` };
+  }
+  const bodyText = await res.text();
+  if (!res.ok) {
+    return { ok: false, status: res.status, detail: bodyText.slice(0, 300) };
+  }
+  try {
+    const body = JSON.parse(bodyText) as { access_token?: string; scope?: string };
+    if (!body.access_token) {
+      return { ok: false, status: res.status, detail: `no access_token in response: ${bodyText.slice(0, 200)}` };
+    }
+    return { ok: true, accessToken: body.access_token, scope: body.scope };
+  } catch {
+    return { ok: false, status: res.status, detail: `non-JSON response: ${bodyText.slice(0, 200)}` };
+  }
 }
 
 export async function verifyWebhookHmac(
