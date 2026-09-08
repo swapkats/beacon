@@ -116,7 +116,12 @@ register(({ analytics, browser, settings }) => {
   void (async () => {
     try {
       const storage = await createStorage(browser);
-      collector = initCollector({ endpoint: ingestUrl, storeToken, storage });
+      collector = initCollector({
+        endpoint: ingestUrl,
+        storeToken,
+        storage,
+        batchSize: 1,
+      });
       for (const input of pending.splice(0)) collector.track(input);
     } catch (e) {
       console.warn("beacon pixel init failed", e);
@@ -127,5 +132,6 @@ register(({ analytics, browser, settings }) => {
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "hidden") collector?.flush();
     });
+    window.addEventListener("pagehide", () => collector?.flush());
   }
 });
