@@ -11,7 +11,7 @@ const apiKey = env.SHOPIFY_API_KEY;
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="shopify-api-key" content={apiKey} />
-    <script src="https://cdn.shopify.com/shopifycloud/app-bridge.js"></script>
+    <script is:inline src="https://cdn.shopify.com/shopifycloud/app-bridge.js"></script>
     <title>Beacon</title>
     <style>
       :root {
@@ -224,10 +224,24 @@ const apiKey = env.SHOPIFY_API_KEY;
       }
 
       let bootstrapped = false;
+      async function waitForShopify(timeoutMs) {
+        const start = Date.now();
+        return new Promise((resolve) => {
+          const tick = () => {
+            const shopify = window.shopify;
+            if (shopify && typeof shopify.idToken === "function") return resolve(shopify);
+            if (Date.now() - start >= timeoutMs) return resolve(null);
+            setTimeout(tick, 100);
+          };
+          tick();
+        });
+      }
       async function bootstrap() {
         if (bootstrapped) return;
-        const shopify = window.shopify;
-        if (!shopify || typeof shopify.idToken !== "function") return;
+        const shopify = await waitForShopify(5000);
+        if (!shopify) {
+          throw new Error("App Bridge unavailable — open this app from the Shopify admin");
+        }
         const token = await shopify.idToken();
         const res = await fetch("/api/bootstrap", {
           method: "POST",
