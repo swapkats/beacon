@@ -1,0 +1,19 @@
+{
+  "name": "@beacon/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "deploy": "astro build && wrangler deploy"
+  },
+  "dependencies": {
+    "@astrojs/cloudflare": "^12.2.1",
+    "astro": "^5.7.4"
+  },
+  "devDependencies": {
+    "wrangler": "^4.14.1"
+  }
+}

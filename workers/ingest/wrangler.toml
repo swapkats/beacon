@@ -1,0 +1,23 @@
+name = "beacon-ingest"
+main = "src/index.ts"
+compatibility_date = "2025-08-01"
+
+[[analytics_engine_datasets]]
+binding = "EVENTS"
+dataset = "beacon_events"
+
+[[kv_namespaces]]
+binding = "STORES"
+id = "16e55e912da94fcf871f909dc4ea82f8"
+
+[[unsafe.bindings]]
+name = "RATE_LIMITER"
+type = "ratelimit"
+namespace_id = "1001"
+
+[unsafe.bindings.simple]
+limit = 120
+period = 60
+
+[vars]
+INGEST_RATE_LIMIT_PER_MIN = "120"

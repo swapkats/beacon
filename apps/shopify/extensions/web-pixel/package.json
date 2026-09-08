@@ -1,0 +1,12 @@
+{
+  "name": "@beacon/web-pixel",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@beacon/collector": "*"
+  },
+  "devDependencies": {
+    "@shopify/web-pixels-extension": "^2.18.0"
+  }
+}

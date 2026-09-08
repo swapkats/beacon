@@ -1,0 +1,257 @@
+---
+import { getEnv } from "../../lib/env";
+
+const env = getEnv(Astro.locals);
+const apiKey = env.SHOPIFY_API_KEY;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="shopify-api-key" content={apiKey} />
+    <script src="https://cdn.shopify.com/shopifycloud/app-bridge.js"></script>
+    <title>Beacon</title>
+    <style>
+      :root {
+        --bg: #f1f1f1;
+        --card: #ffffff;
+        --text: #1a1a1a;
+        --muted: #616161;
+        --border: #e3e3e3;
+        --accent: #2c6ecb;
+        --good: #1a7f37;
+        --warn: #b98900;
+        --bad: #d72c0d;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        padding: 24px;
+      }
+      .header {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        margin-bottom: 16px;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      .brand { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
+      .brand span { color: var(--accent); }
+      .shop { color: var(--muted); font-size: 13px; }
+      .toggle {
+        display: inline-flex;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        overflow: hidden;
+        background: var(--card);
+      }
+      .toggle button {
+        border: 0;
+        background: transparent;
+        padding: 6px 14px;
+        font: inherit;
+        cursor: pointer;
+        color: var(--muted);
+      }
+      .toggle button.active { background: var(--text); color: #fff; }
+      .cards { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 14px 18px;
+        min-width: 160px;
+      }
+      .card .label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+      .card .value { font-size: 24px; font-weight: 650; margin-top: 4px; font-variant-numeric: tabular-nums; }
+      .panel {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+      }
+      table { width: 100%; border-collapse: collapse; }
+      th {
+        text-align: left;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--muted);
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border);
+      }
+      td {
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border);
+        font-variant-numeric: tabular-nums;
+      }
+      tr:last-child td { border-bottom: 0; }
+      th.num, td.num { text-align: right; }
+      .title { font-weight: 600; }
+      .pid { color: var(--muted); font-size: 12px; }
+      .badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+      }
+      .b-good { background: #e3f3e7; color: var(--good); }
+      .b-warn { background: #fff5d6; color: var(--warn); }
+      .b-bad { background: #ffe4e1; color: var(--bad); }
+      .status { padding: 40px; text-align: center; color: var(--muted); }
+      .footer { margin-top: 14px; color: var(--muted); font-size: 12px; max-width: 720px; }
+      .score-bar {
+        height: 4px;
+        border-radius: 2px;
+        background: var(--accent);
+        margin-top: 4px;
+        min-width: 2px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <div class="brand">beacon<span>.</span></div>
+      <div class="toggle" id="days-toggle">
+        <button data-days="7" class="active">Last 7 days</button>
+        <button data-days="30">Last 30 days</button>
+      </div>
+      <div class="shop" id="shop-label"></div>
+    </div>
+
+    <div class="cards">
+      <div class="card">
+        <div class="label">Sessions</div>
+        <div class="value" id="kpi-sessions">—</div>
+      </div>
+      <div class="card">
+        <div class="label">Store bounce rate</div>
+        <div class="value" id="kpi-bounce">—</div>
+      </div>
+      <div class="card">
+        <div class="label">Products with engagement</div>
+        <div class="value" id="kpi-products">—</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <table>
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th class="num">Views</th>
+            <th class="num">Add-to-carts</th>
+            <th class="num">Checkouts</th>
+            <th class="num">Bounce rate</th>
+            <th class="num">Engagement score</th>
+          </tr>
+        </thead>
+        <tbody id="rows">
+          <tr><td colspan="6" class="status">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p class="footer">
+      Engagement score = views + 5×add-to-carts + 20×checkout starts. Bounce rate = sessions that
+      landed on the product page and ended after a single page view. Counts are sampling-aware
+      estimates from Cloudflare Analytics Engine (90-day retention); sessionization follows a
+      30-minute inactivity window.
+    </p>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const fmtInt = (n) => Number(n ?? 0).toLocaleString();
+      const fmtPct = (v) => (v === null || v === undefined ? "—" : (v * 100).toFixed(1) + "%");
+
+      function bounceBadge(rate) {
+        if (rate === null || rate === undefined) return "—";
+        const pct = rate * 100;
+        const cls = pct >= 80 ? "b-bad" : pct >= 60 ? "b-warn" : "b-good";
+        return `<span class="badge ${cls}">${pct.toFixed(1)}%</span>`;
+      }
+
+      function render(data) {
+        $("shop-label").textContent = data.shop ?? "";
+        $("kpi-sessions").textContent = fmtInt(data.store?.sessions);
+        $("kpi-bounce").textContent = fmtPct(data.store?.bounce_rate);
+        $("kpi-products").textContent = fmtInt(data.products?.length ?? 0);
+
+        const maxScore = Math.max(1, ...(data.products ?? []).map((p) => p.score));
+        const rows = (data.products ?? [])
+          .map((p) => {
+            const width = Math.max(2, Math.round((p.score / maxScore) * 120));
+            return `<tr>
+              <td><div class="title">${escapeHtml(p.title)}</div><div class="pid">${escapeHtml(p.product_id)}</div></td>
+              <td class="num">${fmtInt(p.views)}</td>
+              <td class="num">${fmtInt(p.cart_adds)}</td>
+              <td class="num">${fmtInt(p.checkouts)}</td>
+              <td class="num">${bounceBadge(p.bounce_rate)}</td>
+              <td class="num">${fmtInt(p.score)}<div class="score-bar" style="width:${width}px"></div></td>
+            </tr>`;
+          })
+          .join("");
+        $("rows").innerHTML =
+          rows || '<tr><td colspan="6" class="status">No events yet. Browse your storefront with the pixel connected.</td></tr>';
+      }
+
+      function escapeHtml(s) {
+        return String(s ?? "").replace(/[&<>"']/g, (c) => ({
+          "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+        })[c]);
+      }
+
+      async function authedFetch(path) {
+        const shopify = window.shopify;
+        let token = null;
+        if (shopify && typeof shopify.idToken === "function") {
+          token = await shopify.idToken();
+        }
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        let res = await fetch(path, { headers });
+        if (res.status === 401 && token) {
+          token = await shopify.idToken();
+          res = await fetch(path, { headers: { Authorization: `Bearer ${token}` } });
+        }
+        return res;
+      }
+
+      async function load(days) {
+        $("rows").innerHTML = '<tr><td colspan="6" class="status">Loading…</td></tr>';
+        try {
+          const res = await authedFetch(`/api/stats?days=${days}`);
+          if (!res.ok) {
+            const body = await res.json().catch(() => ({}));
+            if (res.status === 401) {
+              $("rows").innerHTML =
+                '<tr><td colspan="6" class="status">Not authenticated. Open this app from the Shopify admin.</td></tr>';
+              return;
+            }
+            throw new Error(body.error ?? `HTTP ${res.status}`);
+          }
+          render(await res.json());
+        } catch (e) {
+          $("rows").innerHTML = `<tr><td colspan="6" class="status">Could not load stats: ${escapeHtml(e.message)}</td></tr>`;
+        }
+      }
+
+      let currentDays = 7;
+      document.getElementById("days-toggle").addEventListener("click", (e) => {
+        const btn = e.target.closest("button[data-days]");
+        if (!btn) return;
+        currentDays = Number(btn.dataset.days);
+        document.querySelectorAll("#days-toggle button").forEach((b) => b.classList.toggle("active", b === btn));
+        load(currentDays);
+      });
+
+      load(currentDays);
+    </script>
+  </body>
+</html>

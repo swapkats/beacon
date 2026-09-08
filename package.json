@@ -1,0 +1,28 @@
+{
+  "name": "beacon",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "workspaces": [
+    "packages/*",
+    "workers/*",
+    "apps/*",
+    "apps/shopify/extensions/*"
+  ],
+  "scripts": {
+    "typecheck": "tsc -p packages/protocol && tsc -p packages/collector && tsc -p workers/ingest && tsc -p apps/shopify/extensions/web-pixel",
+    "test": "vitest run",
+    "fixtures": "node workers/ingest/scripts/fixtures.mjs",
+    "dev:ingest": "npm run dev -w workers/ingest",
+    "dev:web": "npm run dev -w apps/web",
+    "deploy:ingest": "npm run deploy -w workers/ingest",
+    "deploy:web": "npm run deploy -w apps/web"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250810.0",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.9"
+  }
+}

@@ -1,0 +1,6 @@
+type = "backend"
+name = "web"
+
+[commands]
+dev = "node scripts/web-dev.mjs"
+build = "node scripts/web-build.mjs"

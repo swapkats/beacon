@@ -1,0 +1,22 @@
+{
+  "name": "beacon-web",
+  "main": "dist/_worker.js/index.js",
+  "compatibility_date": "2025-08-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "dist",
+    "binding": "ASSETS"
+  },
+  "kv_namespaces": [
+    {
+      "binding": "STORES",
+      "id": "16e55e912da94fcf871f909dc4ea82f8"
+    }
+  ],
+  "vars": {
+    "SHOPIFY_API_KEY": "REPLACE_WITH_CLIENT_ID",
+    "SHOPIFY_APP_HANDLE": "beacon",
+    "PUBLIC_INGEST_URL": "https://beacon-ingest.REPLACE_WITH_SUBDOMAIN.workers.dev/v1/events",
+    "AE_DATASET": "beacon_events"
+  }
+}
